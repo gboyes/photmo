@@ -27,9 +27,6 @@ def iteril(image_list, height, width, sizescales, heighthops, widthhops, arr=Non
 
 def makeDict(image_list, height, width, sizescales, heighthops, widthhops):
     #need to count the number slots in the array
-    
-    
-        
     count = iteril(image_list, height, width, sizescales, heighthops, widthhops)
     D = np.zeros(count, dtype=[('index', int), ('scale', int), ('honset', int), ('wonset', int)])
     count, D = iteril(image_list, height, width, sizescales, heighthops, widthhops, arr=D)

@@ -22,18 +22,26 @@ TARG_PATH = None
 SERVER.add_method('/target_path', 's', handleSeverMessage)
 
 while True:
+    
     #TODO: this will actually queue signals received, decide if that's the intended behaviour
     SERVER.recv(1)
     
     if TARG_PATH:
         print(TARG_PATH)
         
-        target = photmo.PhotmoTarget(TARG_PATH)
-        dictParams = {'num_images' : 3}
+        try:
+            target = photmo.PhotmoTarget(TARG_PATH)
+        except Exception:
+            print("Couldn't make target")
+            TARG_PATH = None
+            continue
+        
+        dictParams = {'num_images' : 10,
+                      'scalars' : [0.5, 0.125]}
         
         dictionary = photmo.PhotmoDictionary(DICT_PATH, params=dictParams)
         
-        params = {'num_iter' : 5,
+        params = {'num_iter' : 5000,
                     'output_path' : './testData/output',
                     'model_output' : {'host' : '127.0.0.1', 'port' : 9002},
                     'iter_output' : {'host' : '127.0.0.1', 'port' : 9003}}

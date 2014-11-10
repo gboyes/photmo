@@ -204,3 +204,4 @@ if __name__ == "__main__":
                 os.system('cp %s %s'%(targs + '/' + t, modname + '/' + t))
                 
             main(targs + '/' + t, corpus, modname, 100, 0.)
+i

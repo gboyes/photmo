@@ -9,7 +9,7 @@ def handleSeverMessage(path, args):
     global TARG_PATH
     TARG_PATH = args[0]
 
-DICT_PATH = './testData/portrait'
+DICT_PATH = './targets'
 PORT = 9001
 
 try:
@@ -36,12 +36,12 @@ while True:
             TARG_PATH = None
             continue
         
-        dictParams = {'num_images' : 10,
-                      'scalars' : [0.5, 0.125]}
+        dictParams = {'num_images' : 100,
+                      'scalars' : [0.05]}
         
         dictionary = photmo.PhotmoDictionary(DICT_PATH, params=dictParams)
         
-        params = {'num_iter' : 5000,
+        params = {'num_iter' : 2**13,
                     'output_path' : './testData/output',
                     'model_output' : {'host' : '127.0.0.1', 'port' : 9002},
                     'iter_output' : {'host' : '127.0.0.1', 'port' : 9003}}

@@ -1,0 +1,18 @@
+{
+    "serverPort" : 9001,
+    "serverPath" : "/target_path",
+    "dictionaryPath" : "/Users/geb/Dropbox/Goethe/image-databases/_targets/alphaed2",
+    "dictionaryParams" :  {
+        "num_images" : 100,
+        "scalars" : [0.1],
+        "windowed" : 0
+        },
+    "analysisParams" : {"num_iter" : 16384,
+        "snapx" : 12,
+        "snapy" : 12,
+        "output_path" : "./testData/output",
+        "model_output" : {"host" : "127.0.0.1", "port" : 9002},
+                    "iter_output" : {"host" : "127.0.0.1", "port" : 9003}
+                
+        }
+}

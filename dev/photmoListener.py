@@ -9,7 +9,7 @@ def handleSeverMessage(path, args):
     global TARG_PATH
     TARG_PATH = args[0]
 
-DICT_PATH = './targets'
+DICT_PATH = '/Users/geb/Dropbox/Goethe/image-databases/_targets/alphaed2'
 PORT = 9001
 
 try:
@@ -37,11 +37,15 @@ while True:
             continue
         
         dictParams = {'num_images' : 100,
-                      'scalars' : [0.05]}
+                      'scalars' : [0.29, 0.13]}
+        
+        
+        #need to notify two machines of iterations : 9002, 9004
+        #send model : 9003 - orange box
         
         dictionary = photmo.PhotmoDictionary(DICT_PATH, params=dictParams)
         
-        params = {'num_iter' : 2**13,
+        params = {'num_iter' : 2**15,
                     'output_path' : './testData/output',
                     'model_output' : {'host' : '127.0.0.1', 'port' : 9002},
                     'iter_output' : {'host' : '127.0.0.1', 'port' : 9003}}

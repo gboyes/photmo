@@ -3,3 +3,5 @@
 testData/
 tmp/
 targets/
+build/
+dist/

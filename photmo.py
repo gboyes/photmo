@@ -16,6 +16,8 @@ from scipy.signal import hann
 
 class PhotmoTarget():
     
+    '''An analysis target image'''
+    
     def __init__(self, path_to_file):
         self.path = path_to_file
         
@@ -27,9 +29,21 @@ class PhotmoTarget():
             raise Exception
             
         self.image = i.astype(float) / 255.0
-        self.height, self.width, self.planes = np.shape(self.image) 
+        self.height, self.width, self.planes = np.shape(self.image)
+        
+        #fake the alpha channel if it doesn't exist
+        if self.planes < 4:
+            print('Missing data, faking missing values')
+            z = np.ones((self.height, self.width, 4))
+            z[:, :, 0:self.planes] = self.image
+            self.image  = z
+            self.height, self.width, self.planes = np.shape(self.image)
+            
+        
     
 class PhotmoAtom():
+    
+    '''An image in an analysis set'''
     
     def __init__(self, path_to_file, scalar=1, windowed=True):
         
@@ -48,6 +62,14 @@ class PhotmoAtom():
             
         self.height, self.width, self.planes = np.shape(self.image)
         
+        #fake the alpha channel if it doesn't exist
+        if self.planes < 4:
+            print('Missing data, faking missing values')
+            z = np.ones((self.height, self.width, 4))
+            z[:, :, 0:self.planes] = self.image
+            self.image  = z
+            self.height, self.width, self.planes = np.shape(self.image)
+        
         if windowed:
             win = np.vstack(hann(self.height)) * hann(self.width)
             for i in range(self.planes):
@@ -56,6 +78,9 @@ class PhotmoAtom():
         self.image[:, :, 0:3] *= 1./linalg.norm(self.image[:, :, 0:3])#normalize
 
 class PhotmoDictionary():
+    
+    '''An analysis set'''
+    
     def __init__(self, path_to_dir, params=None):
         if params:
             try:
@@ -96,6 +121,9 @@ class PhotmoDictionary():
                 
     
 class PhotmoAnalysis():
+    
+    '''A class to manage the analysis of a target PhotmoTarget using a PhotmoDictionary'''
+    
     def __init__(self, target, dictionary, params=None):
         
         #setup memory 
@@ -156,6 +184,8 @@ class PhotmoAnalysis():
     
     def start(self):
         
+        '''Start the analysis'''
+        
         print('Analysis started.... ')
         
         iterSocket = None
@@ -177,7 +207,6 @@ class PhotmoAnalysis():
             
             newDict = {}
             
-            #TODO: add config variable for these spacings
             yo = self.roundnum(np.random.randint(self.target.height), self.snapy)
             xo = self.roundnum(np.random.randint(self.target.width), self.snapx)
             
@@ -284,6 +313,8 @@ class PhotmoAnalysis():
     
 class PhotmoListener():
     
+    '''Manages the input and analysis queue'''
+    
     def __init__(self, config):
         
         self.DICT_PATH = config["dictionaryPath"]
@@ -298,7 +329,7 @@ class PhotmoListener():
     
     def configureNetwork(self):
         
-        '''Configure the network'''
+        '''Configure the OSC network'''
         
         print("Configuring network")
         
@@ -322,6 +353,8 @@ class PhotmoListener():
     
     def listen(self):
         
+        '''Listen for a notification to start the decomposition of an image'''
+        
         while True:
     
             #TODO: this will queue signals received, decide if that's the intended behaviour
@@ -337,9 +370,6 @@ class PhotmoListener():
                     self.targetPath = None
                     continue
         
-                #need to notify two machines of iterations : 9002, 9004
-                #send model : 9003 - orange box
-          
                 dictionary = PhotmoDictionary(self.DICT_PATH, params=self.dictParams)
                 analysis = PhotmoAnalysis(target, dictionary, params=self.analysisParams)
                 analysis.start()

@@ -1,7 +1,7 @@
 {
     "serverPort" : 9001,
     "serverPath" : "/target_path",
-    "dictionaryPath" : "/Users/geb/Dropbox/Goethe/image-databases/_targets/alphaed2",
+    "dictionaryPath" : "/Users/geb/Dropbox/Goethe/image-databases/image-capture",
     "dictionaryParams" :  {
         "num_images" : 100,
         "scalars" : [0.1],

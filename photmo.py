@@ -103,14 +103,19 @@ class PhotmoDictionary():
         else:
             self.kImages = 100
             
+            
+        #sort the files on the basis of creation date, take the N most recent
+        files = [os.path.join(path_to_dir, f) for f in os.listdir(path_to_dir)] # add path to each file
+        files.sort(key=lambda x: os.path.getmtime(x))
+        files = files[::-1]
+        
         self.atoms = []
         count = 0
-        for f in os.listdir(path_to_dir):
+        for f in files:
             if count < self.kImages:
-                print(path_to_dir + '/' + f)
                 for s in self.scalars:
                     try:
-                        a = PhotmoAtom(path_to_dir + '/' + f, scalar=s, windowed=self.windowed)
+                        a = PhotmoAtom(f, scalar=s, windowed=self.windowed)
                         self.atoms.append(a)
                         count +=1
                     except Exception:
@@ -166,6 +171,16 @@ class PhotmoAnalysis():
                 self.snapy = params['snapy']
             except KeyError:
                 self.snapy = 160
+                
+            try:
+                self.minmaxRep = params['minmaxRep']
+            except KeyError:
+                self.minmaxRep = sys.maxsize
+                
+            try:
+                self.randomWalk = params['randomWalk']
+            except KeyError:
+                self.randomWalk = 0
         
         #default config
         else:
@@ -201,6 +216,10 @@ class PhotmoAnalysis():
         winds = set([])
         modelParams = {}
         
+        #counting
+        indLkup = dict(zip(np.arange(len(self.dictionary.atoms)), np.zeros(len(self.dictionary.atoms))))
+        minmaxmet = False
+        
         tmpBuffer = np.zeros(np.shape(self.target.image))
         
         while count < self.kIterations:
@@ -219,7 +238,11 @@ class PhotmoAnalysis():
             newDict['xo'] = xo
             newDict['coef'] = np.zeros((self.target.planes-1, len(self.dictionary.atoms)))
             
+            
+            #TODO: don't calculate correlation for region that is transparent (alpha 0)
             for k, atom in enumerate(self.dictionary.atoms):
+                
+                #bounds checking
                 if yo+atom.height > self.target.height:
                     yb = self.target.height
                     ayb = atom.height - (yo+atom.height - self.target.height)
@@ -234,12 +257,31 @@ class PhotmoAnalysis():
                     xb = xo+atom.width
                     axb = atom.width  
                 
+                #compute the correlation over RGB
                 for p in range(0, self.target.planes-1):
                     newDict['coef'][p, k] = np.tensordot(atom.image[0:ayb, 0:axb, p], self.residual[yo:yb, xo:xb, p])
             
-            ind = np.argmax(np.sum(newDict['coef'], axis=0))
             
-            #quick and dirty
+            potInds = np.argsort(np.sum(newDict['coef'], axis=0))[::-1]
+            
+            ind = None
+            if not minmaxmet:
+                for candInd in potInds:
+                    if indLkup[candInd] < self.minmaxRep:
+                       indLkup[candInd] += 1
+                       ind = candInd
+                       break
+            
+            
+            #no viable ind, means that all of the candidate indices have been used minmaxRep times
+            if ind == None:
+                
+                #by default, take the most correlated
+                ind = potInds[0]
+                minmaxmet = True #and don't check anymore
+                
+            
+            #quick and dirty, check the bounds again
             atom = self.dictionary.atoms[ind]
             if yo+atom.height > self.target.height:
                 yb = self.target.height
@@ -256,6 +298,7 @@ class PhotmoAnalysis():
                 axb = atom.width  
                 
             c = newDict['coef'][:, ind]
+            
             for p in range(0, self.target.planes-1):
                     
                 self.residual[yo:yb, xo:xb, p] -= atom.image[0:ayb, 0:axb, p] * c[p]
@@ -267,8 +310,20 @@ class PhotmoAnalysis():
             self.model[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] * self.target.image[yo:yb, xo:xb, 3]
             tmpBuffer[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] * self.target.image[yo:yb, xo:xb, 3]
              
+           
+            if count == 0:
+                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
+                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
+                cv2.imwrite(path, tmpBuffer * 255)
+                tmpBuffer = np.zeros(np.shape(self.target.image))
+            
+                if iterSocket:
+                    liblo.send(iterSocket, filename)
+                    
+                writecount += 1
+            
             #ugly hacks
-            if np.log2(count) % 1 == 0:
+            elif np.log2(count) % 1 == 0:
                 
                 lastpw2 = np.log2(count)
                 nextpw2 = lastpw2 + 1
@@ -276,8 +331,8 @@ class PhotmoAnalysis():
                 kdist = pwdist / 16
                 winds = set(np.round(np.arange(2**lastpw2, 2**nextpw2, kdist)))
                 
-                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M"), writecount)
-                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M"), writecount)
+                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
+                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
                 cv2.imwrite(path, tmpBuffer * 255)
                 tmpBuffer = np.zeros(np.shape(self.target.image))
             
@@ -287,8 +342,8 @@ class PhotmoAnalysis():
                 writecount += 1
                     
             elif count in winds:
-                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M"), writecount)
-                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M"), writecount)
+                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
+                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
                 cv2.imwrite(path, tmpBuffer * 255)
                 tmpBuffer = np.zeros(np.shape(self.target.image))
             
@@ -299,15 +354,17 @@ class PhotmoAnalysis():
             
             
             count += 1
-            print(count)
+            #print(count)
             
             
-        filename = "%s_MODEL.png"%self.timestamp.strftime("%Y-%m-%d_%H_%M")
-        path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M"))
+        filename = "%s_MODEL.png"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
+        path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
         cv2.imwrite(path, self.model * 255)
         if modelSocket:
             liblo.send(modelSocket, filename)
+            
+        print(indLkup)
     
     
     
@@ -331,7 +388,7 @@ class PhotmoListener():
         
         '''Configure the OSC network'''
         
-        print("Configuring network")
+        print("(Re)Configuring network")
         
         # create OSC server
         try:
@@ -350,6 +407,23 @@ class PhotmoListener():
         
         # register method taking an int to simulate the
         self.oscServer.add_method(self.serverPath, 's', handle_target)
+        
+    def randomWalk(self):
+        
+        self.dictParams["windowed"] = np.random.randint(2)
+        
+        k = len(self.dictParams["scalars"])
+        
+        gamma = 0.75
+        gamma_  = 1.0 - gamma
+        
+        self.dictParams["scalars"] = [(self.dictParams["scalars"][i%k] * gamma) + \
+            ((np.random.randn() % 1) * gamma_) for i in range(0, np.random.randint(1, 3))]
+        
+        self.analysisParams["snapx"] = np.random.randint(1, np.ceil(480 * max(self.dictParams["scalars"])))
+        self.analysisParams["snapy"] = np.random.randint(1, np.ceil(640 * max(self.dictParams["scalars"])))
+        
+        print(self.dictParams["scalars"])
     
     def listen(self):
         
@@ -357,10 +431,14 @@ class PhotmoListener():
         
         while True:
     
-            #TODO: this will queue signals received, decide if that's the intended behaviour
+            #This will set the targetPath
             self.oscServer.recv(1)
     
             if self.targetPath:
+                
+                #explicitly close the port to prevent intermediate queing
+                self.oscServer.free()
+                
                 print(self.targetPath)
         
                 try:
@@ -374,8 +452,12 @@ class PhotmoListener():
                 analysis = PhotmoAnalysis(target, dictionary, params=self.analysisParams)
                 analysis.start()
         
-             #reset the target path to None, in order to wait for next taeget
-            self.targetPath = None
+                #reset the target path to None, in order to wait for next target, re-config the port
+                self.configureNetwork()
+                self.targetPath = None
+                
+                if analysis.randomWalk:
+                    self.randomWalk()
         
     
             time.sleep(0.01)

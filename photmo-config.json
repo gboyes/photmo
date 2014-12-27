@@ -1,18 +1,20 @@
 {
     "serverPort" : 9001,
     "serverPath" : "/target_path",
-    "dictionaryPath" : "/Users/geb/Dropbox/Goethe/image-databases/image-capture",
+    "dictionaryPath" : "/Users/geb/Dropbox/Goethe/image-databases/_targets/alphaed",
     "dictionaryParams" :  {
         "num_images" : 100,
-        "scalars" : [0.1],
-        "windowed" : 0
+        "scalars" : [0.2],
+        "windowed" : 1
         },
-    "analysisParams" : {"num_iter" : 16384,
-        "snapx" : 12,
-        "snapy" : 12,
+    "analysisParams" : {"num_iter" : 8192,
+        "snapx" : 60,
+        "snapy" : 60,
+        "minmaxRep" : 41,
+        "randomWalk" : 1,
         "output_path" : "./testData/output",
         "model_output" : {"host" : "127.0.0.1", "port" : 9002},
-                    "iter_output" : {"host" : "127.0.0.1", "port" : 9003}
+        "iter_output" : {"host" : "127.0.0.1", "port" : 9003}
                 
         }
 }

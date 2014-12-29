@@ -218,7 +218,7 @@ class PhotmoAnalysis():
         
         #counting
         indLkup = dict(zip(np.arange(len(self.dictionary.atoms)), np.zeros(len(self.dictionary.atoms))))
-        minmaxmet = False
+        
         
         tmpBuffer = np.zeros(np.shape(self.target.image))
         
@@ -265,12 +265,12 @@ class PhotmoAnalysis():
             potInds = np.argsort(np.sum(newDict['coef'], axis=0))[::-1]
             
             ind = None
-            if not minmaxmet:
-                for candInd in potInds:
-                    if indLkup[candInd] < self.minmaxRep:
-                       indLkup[candInd] += 1
-                       ind = candInd
-                       break
+            
+            for candInd in potInds:
+                if indLkup[candInd] < self.minmaxRep:
+                    indLkup[candInd] += 1
+                    ind = candInd
+                    break
             
             
             #no viable ind, means that all of the candidate indices have been used minmaxRep times
@@ -278,7 +278,9 @@ class PhotmoAnalysis():
                 
                 #by default, take the most correlated
                 ind = potInds[0]
-                minmaxmet = True #and don't check anymore
+                indLkup = dict(zip(np.arange(len(self.dictionary.atoms)), np.zeros(len(self.dictionary.atoms))))
+                indLkup[potInds[0]] += 1
+                
                 
             
             #quick and dirty, check the bounds again

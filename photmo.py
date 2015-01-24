@@ -65,6 +65,7 @@ class PhotmoAtom():
         #fake the alpha channel if it doesn't exist
         if self.planes < 4:
             print('Missing data, faking missing values')
+            
             z = np.ones((self.height, self.width, 4))
             z[:, :, 0:self.planes] = self.image
             self.image  = z
@@ -103,6 +104,8 @@ class PhotmoDictionary():
         else:
             self.kImages = 100
             
+        self.maxHeight = 1.0
+        self.maxWidth = 1.0
             
         #sort the files on the basis of creation date, take the N most recent
         files = [os.path.join(path_to_dir, f) for f in os.listdir(path_to_dir)] # add path to each file
@@ -117,7 +120,15 @@ class PhotmoDictionary():
                     try:
                         a = PhotmoAtom(f, scalar=s, windowed=self.windowed)
                         self.atoms.append(a)
+                        
+                        #store the maxes for later
+                        if a.height > self.maxHeight:
+                            self.maxHeight = a.height
+                        if a.width  > self.maxWidth:
+                            self.maxWidth = a.width
+                            
                         count +=1
+                        
                     except Exception:
                         print('Error making atom')
                         continue
@@ -137,6 +148,9 @@ class PhotmoAnalysis():
         self.dictionary = dictionary
         self.model = np.zeros(np.shape(self.target.image))
         self.residual = self.target.image.copy()
+        
+       
+        
         
         print('Length of dictionary %d'%len(self.dictionary.atoms))
         
@@ -216,18 +230,47 @@ class PhotmoAnalysis():
         winds = set([])
         modelParams = {}
         
+        #downsample the target image alpha channel to optimize the search
+        alphaTarget = self.target.image[:, :, 3].copy()
+        dsHeight = int(np.ceil(self.target.height / float(self.dictionary.maxHeight)))
+        dsWidth = int(np.ceil(self.target.width / float(self.dictionary.maxWidth)))
+        
+        scaled = cv2.resize(alphaTarget, (dsWidth, dsHeight))
+        
+        print(scaled)
+        
         #counting
         indLkup = dict(zip(np.arange(len(self.dictionary.atoms)), np.zeros(len(self.dictionary.atoms))))
-        
-        
         tmpBuffer = np.zeros(np.shape(self.target.image))
         
         while count < self.kIterations:
             
             newDict = {}
             
-            yo = self.roundnum(np.random.randint(self.target.height), self.snapy)
-            xo = self.roundnum(np.random.randint(self.target.width), self.snapx)
+            #make sure there's a non alphaed point
+            foundPoint = False
+            maxDepth = 1000 #because we could be unlucky
+            maxDepthCounter = 0
+            
+            while (not foundPoint) and (maxDepthCounter < maxDepth):
+                
+                yo = self.roundnum(np.random.randint(self.target.height), self.snapy)
+                xo = self.roundnum(np.random.randint(self.target.width), self.snapx)
+                
+                xo_ = np.ceil(xo / float(self.dictionary.maxWidth))
+                yo_ = np.ceil(yo / float(self.dictionary.maxHeight))
+                
+                dsh, dsw =  np.shape(scaled)
+                if xo_ >= dsw:
+                    xo_ = dsw - 1
+                if yo_ >= dsh:
+                    yo_ = dsh - 1
+                
+                if (scaled[yo_,xo_] > 0.0):
+                    foundPoint = True
+                
+                maxDepthCounter += 1
+                
             
             if yo > self.target.height-1:
                 yo = self.target.height-1
@@ -237,9 +280,7 @@ class PhotmoAnalysis():
             newDict['yo'] = yo
             newDict['xo'] = xo
             newDict['coef'] = np.zeros((self.target.planes-1, len(self.dictionary.atoms)))
-            
-            
-            #TODO: don't calculate correlation for region that is transparent (alpha 0)
+
             for k, atom in enumerate(self.dictionary.atoms):
                 
                 #bounds checking
@@ -263,7 +304,6 @@ class PhotmoAnalysis():
             
             
             potInds = np.argsort(np.sum(newDict['coef'], axis=0))[::-1]
-            
             ind = None
             
             for candInd in potInds:
@@ -308,11 +348,12 @@ class PhotmoAnalysis():
                 tmpBuffer[yo:yb, xo:xb, p] +=  atom.image[0:ayb, 0:axb, p] * c[p]
                 
             
-            self.residual[yo:yb, xo:xb, 3] -= atom.image[0:ayb, 0:axb, 3] * self.target.image[yo:yb, xo:xb, 3]
-            self.model[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] * self.target.image[yo:yb, xo:xb, 3]
-            tmpBuffer[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] * self.target.image[yo:yb, xo:xb, 3]
+            self.residual[yo:yb, xo:xb, 3] -= atom.image[0:ayb, 0:axb, 3] #* self.target.image[yo:yb, xo:xb, 3]
+            self.model[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] #* self.target.image[yo:yb, xo:xb, 3]
+            tmpBuffer[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] #* self.target.image[yo:yb, xo:xb, 3]
              
            
+            
             if count == 0:
                 filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
                 path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
@@ -353,10 +394,10 @@ class PhotmoAnalysis():
                     liblo.send(iterSocket, filename)
                     
                 writecount += 1
+                
             
             
             count += 1
-            #print(count)
             
             
         filename = "%s_MODEL.png"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
@@ -416,11 +457,13 @@ class PhotmoListener():
         
         k = len(self.dictParams["scalars"])
         
-        gamma = 0.75
-        gamma_  = 1.0 - gamma
+        #gamma = 0.75
+        #gamma_  = 1.0 - gamma
         
-        self.dictParams["scalars"] = [(self.dictParams["scalars"][i%k] * gamma) + \
-            ((np.random.randn() % 1) * gamma_) for i in range(0, np.random.randint(1, 3))]
+        #self.dictParams["scalars"] = [(self.dictParams["scalars"][i%k] * gamma) + \
+            #((np.random.randn() % 1) * gamma_) for i in range(0, np.random.randint(1, 3))]
+        
+        self.dictParams["scalars"] = [np.random.randint(5, 20) / 100.0 for i in range(0, np.random.randint(1, 3))]
         
         self.analysisParams["snapx"] = np.random.randint(1, np.ceil(480 * max(self.dictParams["scalars"])))
         self.analysisParams["snapy"] = np.random.randint(1, np.ceil(640 * max(self.dictParams["scalars"])))

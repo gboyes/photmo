@@ -10,6 +10,7 @@ import scipy.linalg as linalg
 import datetime
 import liblo
 import time
+import subprocess
 
 from multiprocessing import Process
 from scipy.signal import hann
@@ -149,9 +150,6 @@ class PhotmoAnalysis():
         self.model = np.zeros(np.shape(self.target.image))
         self.residual = self.target.image.copy()
         
-       
-        
-        
         print('Length of dictionary %d'%len(self.dictionary.atoms))
         
         if params:
@@ -211,6 +209,20 @@ class PhotmoAnalysis():
         else:
              return num-rem    
     
+    def writeIterationImage(self, kIteration, iSocket):
+        
+        filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), kIteration)
+        path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), kIteration)
+        cv2.imwrite(path, self.tmpBuffer * 255)
+        cv2.imwrite('./tmp/%s'%filename, self.model * 255)
+        self.tmpBuffer = np.zeros(np.shape(self.target.image))
+            
+        if iSocket:
+            liblo.send(iSocket, filename)
+        
+        #TODO: write current model into the a tmp directory, 
+        
+    
     def start(self):
         
         '''Start the analysis'''
@@ -237,11 +249,9 @@ class PhotmoAnalysis():
         
         scaled = cv2.resize(alphaTarget, (dsWidth, dsHeight))
         
-        print(scaled)
-        
         #counting
         indLkup = dict(zip(np.arange(len(self.dictionary.atoms)), np.zeros(len(self.dictionary.atoms))))
-        tmpBuffer = np.zeros(np.shape(self.target.image))
+        self.tmpBuffer = np.zeros(np.shape(self.target.image))
         
         while count < self.kIterations:
             
@@ -249,7 +259,7 @@ class PhotmoAnalysis():
             
             #make sure there's a non alphaed point
             foundPoint = False
-            maxDepth = 1000 #because we could be unlucky
+            maxDepth = 100 #because we could be unlucky
             maxDepthCounter = 0
             
             while (not foundPoint) and (maxDepthCounter < maxDepth):
@@ -321,7 +331,6 @@ class PhotmoAnalysis():
                 indLkup = dict(zip(np.arange(len(self.dictionary.atoms)), np.zeros(len(self.dictionary.atoms))))
                 indLkup[potInds[0]] += 1
                 
-                
             
             #quick and dirty, check the bounds again
             atom = self.dictionary.atoms[ind]
@@ -345,27 +354,19 @@ class PhotmoAnalysis():
                     
                 self.residual[yo:yb, xo:xb, p] -= atom.image[0:ayb, 0:axb, p] * c[p]
                 self.model[yo:yb, xo:xb, p] +=  atom.image[0:ayb, 0:axb, p] * c[p]
-                tmpBuffer[yo:yb, xo:xb, p] +=  atom.image[0:ayb, 0:axb, p] * c[p]
+                self.tmpBuffer[yo:yb, xo:xb, p] +=  atom.image[0:ayb, 0:axb, p] * c[p]
                 
             
             self.residual[yo:yb, xo:xb, 3] -= atom.image[0:ayb, 0:axb, 3] #* self.target.image[yo:yb, xo:xb, 3]
             self.model[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] #* self.target.image[yo:yb, xo:xb, 3]
-            tmpBuffer[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] #* self.target.image[yo:yb, xo:xb, 3]
+            self.tmpBuffer[yo:yb, xo:xb, 3] +=  atom.image[0:ayb, 0:axb, 3] #* self.target.image[yo:yb, xo:xb, 3]
              
            
-            
             if count == 0:
-                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
-                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
-                cv2.imwrite(path, tmpBuffer * 255)
-                tmpBuffer = np.zeros(np.shape(self.target.image))
-            
-                if iterSocket:
-                    liblo.send(iterSocket, filename)
-                    
+                self.writeIterationImage(writecount, iterSocket)
                 writecount += 1
             
-            #ugly hacks
+           
             elif np.log2(count) % 1 == 0:
                 
                 lastpw2 = np.log2(count)
@@ -374,40 +375,34 @@ class PhotmoAnalysis():
                 kdist = pwdist / 16
                 winds = set(np.round(np.arange(2**lastpw2, 2**nextpw2, kdist)))
                 
-                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
-                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
-                cv2.imwrite(path, tmpBuffer * 255)
-                tmpBuffer = np.zeros(np.shape(self.target.image))
-            
-                if iterSocket:
-                    liblo.send(iterSocket, filename)
-                    
+                self.writeIterationImage(writecount, iterSocket)
                 writecount += 1
                     
             elif count in winds:
-                filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
-                path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), writecount)
-                cv2.imwrite(path, tmpBuffer * 255)
-                tmpBuffer = np.zeros(np.shape(self.target.image))
-            
-                if iterSocket:
-                    liblo.send(iterSocket, filename)
-                    
+                self.writeIterationImage(writecount, iterSocket)
                 writecount += 1
                 
-            
-            
             count += 1
             
             
-        filename = "%s_MODEL.png"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
-        path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        #write the model
+        filename = "%s_MODEL.gif"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
+        #path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
-        cv2.imwrite(path, self.model * 255)
+        #cv2.imwrite(path, self.model * 255)
+        
+            
+        
+        gifpath = "%s/%s_MODEL.gif"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        
+        #TODO: make subprocess and spawn ffmpeg to make gif, send a message somewhere to signal that the gif is complete
+        os.system("convert ./tmp/*.png %s"%gifpath)
+        #os.system("ffmpeg -f image2 -i ./tmp/%s_%%7d.png -pix_fmt bgra %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        for f in os.listdir("./tmp") :
+            os.remove("./tmp/%s"%f)
+            
         if modelSocket:
             liblo.send(modelSocket, filename)
-            
-        print(indLkup)
     
     
     
@@ -463,7 +458,7 @@ class PhotmoListener():
         #self.dictParams["scalars"] = [(self.dictParams["scalars"][i%k] * gamma) + \
             #((np.random.randn() % 1) * gamma_) for i in range(0, np.random.randint(1, 3))]
         
-        self.dictParams["scalars"] = [np.random.randint(5, 20) / 100.0 for i in range(0, np.random.randint(1, 3))]
+        self.dictParams["scalars"] = [np.random.randint(10, 17) / 100.0 for i in range(0, np.random.randint(1, 3))]
         
         self.analysisParams["snapx"] = np.random.randint(1, np.ceil(480 * max(self.dictParams["scalars"])))
         self.analysisParams["snapy"] = np.random.randint(1, np.ceil(640 * max(self.dictParams["scalars"])))

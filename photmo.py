@@ -1,3 +1,22 @@
+'''
+photmo
+Copyright (C) 2014-2015 Graham Boyes
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+'''
+
 #!/usr/bin/env python
 
 import os
@@ -387,17 +406,15 @@ class PhotmoAnalysis():
             
         #write the model
         filename = "%s_MODEL.gif"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
-        #path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
-        #cv2.imwrite(path, self.model * 255)
-        
-            
+        cv2.imwrite(path, self.model * 255)
         
         gifpath = "%s/%s_MODEL.gif"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
         #TODO: make subprocess and spawn ffmpeg to make gif, send a message somewhere to signal that the gif is complete
-        os.system("convert ./tmp/*.png %s"%gifpath)
-        #os.system("ffmpeg -f image2 -i ./tmp/%s_%%7d.png -pix_fmt bgra %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        #os.system("convert ./tmp/*.png %s"%gifpath)
+        os.system("ffmpeg -f image2 -i ./tmp/%s_%%7d.png %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
         for f in os.listdir("./tmp") :
             os.remove("./tmp/%s"%f)
             

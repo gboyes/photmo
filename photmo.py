@@ -410,11 +410,16 @@ class PhotmoAnalysis():
         
         cv2.imwrite(path, self.model * 255)
         
-        gifpath = "%s/%s_MODEL.gif"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        #gifpath = "%s/%s_MODEL.avi"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        gifpath = "%s/%s_MODEL.mov"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
         #TODO: make subprocess and spawn ffmpeg to make gif, send a message somewhere to signal that the gif is complete
         #os.system("convert ./tmp/*.png %s"%gifpath)
-        os.system("ffmpeg -f image2 -i ./tmp/%s_%%7d.png %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        #os.system("ffmpeg -f image2 -i ./tmp/%s_%%7d.png %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        #os.system("ffmpeg -f image2 -i ./tmp/%s_%%7d.png -c:v huffyuv %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        os.system("ffmpeg -f image2 -r 24 -i ./tmp/%s_%%7d.png -vcodec qtrle -pix_fmt argb -r 24 -b:v 64k -f mov -y %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        
+        
         for f in os.listdir("./tmp") :
             os.remove("./tmp/%s"%f)
             
@@ -465,7 +470,7 @@ class PhotmoListener():
         
     def randomWalk(self):
         
-        self.dictParams["windowed"] = np.random.randint(2)
+        self.dictParams["windowed"] = 1 #always windowed
         
         k = len(self.dictParams["scalars"])
         
@@ -475,8 +480,12 @@ class PhotmoListener():
         #self.dictParams["scalars"] = [(self.dictParams["scalars"][i%k] * gamma) + \
             #((np.random.randn() % 1) * gamma_) for i in range(0, np.random.randint(1, 3))]
         
+        
+        #make scalars somewhere between 0.1 and 0.17?
         self.dictParams["scalars"] = [np.random.randint(10, 17) / 100.0 for i in range(0, np.random.randint(1, 3))]
         
+        
+        #change the snap configs
         self.analysisParams["snapx"] = np.random.randint(1, np.ceil(480 * max(self.dictParams["scalars"])))
         self.analysisParams["snapy"] = np.random.randint(1, np.ceil(640 * max(self.dictParams["scalars"])))
         

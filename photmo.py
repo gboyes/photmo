@@ -405,13 +405,14 @@ class PhotmoAnalysis():
             
             
         #write the model
-        filename = "%s_MODEL.gif"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
+        
         path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
         cv2.imwrite(path, self.model * 255)
         
         #gifpath = "%s/%s_MODEL.avi"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         gifpath = "%s/%s_MODEL.mov"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        filename = "%s_MODEL.mov"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
         
         #TODO: make subprocess and spawn ffmpeg to make gif, send a message somewhere to signal that the gif is complete
         #os.system("convert ./tmp/*.png %s"%gifpath)

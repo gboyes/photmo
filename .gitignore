@@ -1,7 +1,4 @@
 *.py~
 *.pyc
-testData/
+image-output/
 tmp/
-targets/
-build/
-dist/

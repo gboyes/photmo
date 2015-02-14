@@ -172,11 +172,17 @@ class PhotmoAnalysis():
         print('Length of dictionary %d'%len(self.dictionary.atoms))
         
         if params:
+            
             try:
-                self.outputDirectory = params['output_path']
+                self.outputDirectory = params['output-local']
             except KeyError:
                 print('Key error')
-                self.outputDirectory = '/tmp'
+                self.outputDirectory = './tmp'
+            
+            try:
+                self.outputRemote = params['output-remote']
+            except KeyError:
+                print('Key error')
                 
             try:
                 self.modelAddr = params['model_output']
@@ -184,7 +190,11 @@ class PhotmoAnalysis():
                 print('Key Error')
                 
             try:
-                self.iterAddr = params['iter_output']
+                self.iterAddr1 = params['iter_output1']
+            except KeyError:
+                print('Key Error')
+            try:
+                self.iterAddr2 = params['iter_output2']
             except KeyError:
                 print('Key Error')
                 
@@ -228,29 +238,46 @@ class PhotmoAnalysis():
         else:
              return num-rem    
     
-    def writeIterationImage(self, kIteration, iSocket):
+    def writeIterationImage(self, kIteration, notificationHosts=[]):
         
+        #just the filename
         filename = "%s_%07d.png"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), kIteration)
+        
+        #the full path
         path = "%s/%s_%07d.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), kIteration)
+        
+        #the remote path
+        rpath = "%s/%s"%(self.outputRemote, filename)
+        
         cv2.imwrite(path, self.tmpBuffer * 255)
         cv2.imwrite('./tmp/%s'%filename, self.model * 255)
+        
         self.tmpBuffer = np.zeros(np.shape(self.target.image))
             
-        if iSocket:
-            liblo.send(iSocket, filename)
+        for h in notificationHosts:
+            try:
+                if h == self.iterAddress1:
+                    liblo.send(h, path)
+                elif h == self.iterAddress2:
+                    liblo.send(h, rpath)
+            except IOError:
+                print("Host is down or doesn't exist.")
         
-        #TODO: write current model into the a tmp directory, 
-        
-    
     def start(self):
         
         '''Start the analysis'''
         
         print('Analysis started.... ')
         
-        iterSocket = None
-        if self.iterAddr:
-            iterSocket = liblo.Address(self.iterAddr['host'], self.iterAddr['port'] )
+        #TODO: config should have a list for these since there are multiple
+        iterSockets = []
+        if self.iterAddr1:
+            self.iterAddress1 = liblo.Address(self.iterAddr1['host'], self.iterAddr1['port'] )
+            iterSockets.append(self.iterAddress1)
+            
+        if self.iterAddr2:
+            self.iterAddress2 = liblo.Address(self.iterAddr2['host'], self.iterAddr2['port'] )
+            iterSockets.append(self.iterAddress2)
         
         modelSocket = None
         if self.modelAddr:
@@ -382,7 +409,7 @@ class PhotmoAnalysis():
              
            
             if count == 0:
-                self.writeIterationImage(writecount, iterSocket)
+                self.writeIterationImage(writecount, iterSockets)
                 writecount += 1
             
            
@@ -394,32 +421,35 @@ class PhotmoAnalysis():
                 kdist = pwdist / 16
                 winds = set(np.round(np.arange(2**lastpw2, 2**nextpw2, kdist)))
                 
-                self.writeIterationImage(writecount, iterSocket)
+                self.writeIterationImage(writecount, iterSockets)
                 writecount += 1
                     
             elif count in winds:
-                self.writeIterationImage(writecount, iterSocket)
+                self.writeIterationImage(writecount, iterSockets)
                 writecount += 1
                 
             count += 1
             
             
         #write the model
-        filename = "%s_MODEL.gif"%self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
-        path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
+        path = "%s/%s_MODEL.png"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         cv2.imwrite(path, self.model * 255)
         
-        gifpath = "%s/%s_MODEL.gif"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        gifpath = "%s/%s_MODEL.mov"%(self.outputDirectory, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
+        remotePath = "%s/%s_MODEL.mov"%(self.outputRemote, self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"))
         
-        #TODO: make subprocess and spawn ffmpeg to make gif, send a message somewhere to signal that the gif is complete
-        #os.system("convert ./tmp/*.png %s"%gifpath)
-        os.system("ffmpeg -f image2 -i ./tmp/%s_%%7d.png %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        os.system("ffmpeg -f image2 -r 24 -i ./tmp/%s_%%7d.png -vcodec qtrle -pix_fmt argb -r 24 -b:v 64k -f mov -y %s"%(self.timestamp.strftime("%Y-%m-%d_%H_%M_%S"), gifpath))
+        
+        
         for f in os.listdir("./tmp") :
             os.remove("./tmp/%s"%f)
             
         if modelSocket:
-            liblo.send(modelSocket, filename)
+            try:
+                liblo.send(modelSocket, remotePath)
+            except IOError:
+                print("Host doesn't exist or is down")
     
     
     
@@ -430,8 +460,18 @@ class PhotmoListener():
     def __init__(self, config):
         
         self.DICT_PATH = config["dictionaryPath"]
+        
+        #the server
         self.serverPort = config["serverPort"]
         self.serverPath = config["serverPath"]
+        
+        #busy notifications 
+        self.busyHost = config["busy"]["host"]
+        self.busyPort = config["busy"]["port"]
+        self.busyPath = config["busy"]["path"]
+        
+        self.busyAddress = liblo.Address(self.busyHost, self.busyPort)
+        
         self.dictParams = config["dictionaryParams"]
         self.analysisParams = config["analysisParams"]
         
@@ -443,7 +483,7 @@ class PhotmoListener():
         
         '''Configure the OSC network'''
         
-        print("(Re)Configuring network")
+        print("Configuring network")
         
         # create OSC server
         try:
@@ -452,7 +492,6 @@ class PhotmoListener():
         except liblo.ServerError, err:
             print str(err)
             return
-            
             
         #callback function for the sever
         def handle_target(path, args):
@@ -465,18 +504,15 @@ class PhotmoListener():
         
     def randomWalk(self):
         
-        self.dictParams["windowed"] = np.random.randint(2)
+        self.dictParams["windowed"] = 1 #always windowed
         
         k = len(self.dictParams["scalars"])
         
-        #gamma = 0.75
-        #gamma_  = 1.0 - gamma
-        
-        #self.dictParams["scalars"] = [(self.dictParams["scalars"][i%k] * gamma) + \
-            #((np.random.randn() % 1) * gamma_) for i in range(0, np.random.randint(1, 3))]
-        
+        #make scalars somewhere between 0.1 and 0.17?
         self.dictParams["scalars"] = [np.random.randint(10, 17) / 100.0 for i in range(0, np.random.randint(1, 3))]
         
+        
+        #change the snap configs
         self.analysisParams["snapx"] = np.random.randint(1, np.ceil(480 * max(self.dictParams["scalars"])))
         self.analysisParams["snapy"] = np.random.randint(1, np.ceil(640 * max(self.dictParams["scalars"])))
         
@@ -495,8 +531,11 @@ class PhotmoListener():
                 
                 #explicitly close the port to prevent intermediate queing
                 self.oscServer.free()
+                try:
+                    liblo.send(self.busyAddress, self.busyPath, 1)
+                except IOError:
+                    print("Host is down or doesn't exist.")
                 
-                print(self.targetPath)
         
                 try:
                     target = PhotmoTarget(self.targetPath)
@@ -512,6 +551,10 @@ class PhotmoListener():
                 #reset the target path to None, in order to wait for next target, re-config the port
                 self.configureNetwork()
                 self.targetPath = None
+                try:
+                    liblo.send(self.busyAddress, self.busyPath, 0)
+                except IOError:
+                    print("Host is down or doesn't exist.")
                 
                 if analysis.randomWalk:
                     self.randomWalk()

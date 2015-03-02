@@ -1,0 +1,26 @@
+{
+    "serverPort" : 9001,
+    "serverPath" : "/target_path",
+    "busy" : {"host" : "localhost", "port" : 9005, "path":"/busy"},
+    "busy2" : {"host" : "localhost", "port" : 9005, "path":"/busy"},
+    "dictionaryPath" : "/Users/geb/Dropbox/Goethe/image-databases/_targets/alphaed",
+    "dictionaryParams" :  {
+        "num_images" : 100,
+        "scalars" : [0.05],
+        "windowed" : 1
+        },
+    "analysisParams" : {"num_iter" : 5555,
+        "snapx" : 8,
+        "snapy" : 10,
+        "minmaxRep" : 16,
+        "randomWalk" : 1,
+        "output-local" : "./image-output",
+        "output-shared" : "/Users/geb/Desktop",
+        "output-iteration-shared" : "/dev/null",
+        "notification-video" : "/dev/null",
+        "notification-image" : "/dev/null",
+        "model_output" : {"host" : "localhost", "port" : 9002},
+        "iter_output1" : {"host" : "localhost", "port" : 9003},
+        "iter_output2" : {"host" : "localhost", "port" : 9004}        
+        }
+}

@@ -2,6 +2,7 @@
     "serverPort" : 9001,
     "serverPath" : "/target_path",
     "busy" : {"host" : "module1.local", "port" : 9005, "path":"/busy"},
+    "busy2" : {"host" : "module2.local", "port" : 9005, "path":"/busy"},
     "dictionaryPath" : "/Users/geb/Dropbox/Goethe/image-databases/_targets/alphaed",
     "dictionaryParams" :  {
         "num_images" : 100,
@@ -13,9 +14,12 @@
         "snapy" : 60,
         "minmaxRep" : 16,
         "randomWalk" : 1,
-        "output-local" : "/Users/geb/Development/photmo/image-output",
-        "output-remote" : "/image-output",
-        "model_output" : {"host" : "module3-video.local", "port" : 9002},
+        "output-local" : "/Users/Marlon_MBPro3/Projects/Inside.Out/imagedecomp-images1",
+        "output-shared" : "/Volumes/imagedecomp-video",
+        "output-iteration-shared" : "/Volumes/imagedecomp-images2",
+        "notification-video" : "/Users/johnnyvenom/Documents/insideout-data/imagedecomp-video",
+        "notification-image" : "/Users/geb/Documents/imagedecomp-images2",
+        "model_output" : {"host" : "module3.local", "port" : 9002},
         "iter_output1" : {"host" : "module1.local", "port" : 9003},
         "iter_output2" : {"host" : "module2.local", "port" : 9004}        
         }

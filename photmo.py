@@ -34,7 +34,6 @@ import subprocess
 from multiprocessing import Process
 from scipy.signal import hann
 
-import IOTwit
 
 
 class PhotmoTarget():
@@ -295,7 +294,7 @@ class PhotmoAnalysis():
         
         '''Start the analysis'''
         
-        twit = IOTwit.IOTwit()
+        
         
         #TODO: make dir if itdoesn't
         self.tmppath = './tmp/' + self.timestamp.strftime("%Y-%m-%d_%H_%M_%S") 
@@ -481,7 +480,7 @@ class PhotmoAnalysis():
         
         #TOREMOVE
         localmodel = open(localpath, 'rb')
-        twit.post(localmodel)
+        
         
         #spawn process for movie write
         tmppath_ = self.tmppath

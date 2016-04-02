@@ -22,12 +22,9 @@ class Target(object):
 
 class Atom(object):
     def __init__(self, path_to_file, scalar=1, windowed=True):
-
         self.path = path_to_file
-
         i = cv2.imread(self.path, cv2.IMREAD_UNCHANGED)
         if i is None:
-            print('No valid image')
             raise Exception
 
         if scalar != 1:
@@ -37,11 +34,7 @@ class Atom(object):
             self.image = i.astype(float) / 255.0
 
         self.height, self.width, self.planes = np.shape(self.image)
-
-        # fake the alpha channel if it doesn't exist
         if self.planes < 4:
-            print('Missing data, faking missing values')
-
             z = np.ones((self.height, self.width, 4))
             z[:, :, 0:self.planes] = self.image
             self.image = z

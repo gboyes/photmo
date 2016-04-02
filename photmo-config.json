@@ -1,13 +1,16 @@
 {
+    "target" : {
+        "image" : "/Users/geb/Desktop/g.png"
+    },
     "dictionary" :  {
         "max" : 100,
-        "scalars" : [0.2],
-        "windowed" : true
+        "scalars" : [0.05],
+        "windowed" : true,
+        "images" : ["/Users/geb/Desktop/seq/Screen Shot 2015-11-06 at 11.33.08 PM.png"]
         },
-    "analysis" : {"iterations" : 5555,
-        "snap_to_x" : 60,
-        "snap_to_y" : 60,
-        "minmaxRep" : 16,
-        "randomWalk" : false
+    "analysis" : {"iterations" : 20000,
+        "snap_to_x" : 5,
+        "snap_to_y" : 5,
+        "rep" : 16
         }
 }

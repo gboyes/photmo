@@ -3,7 +3,8 @@ import model.analysis
 import json
 import falcon
 
-class Analysis(object):
+class Process(object):
+
     def on_post(self, req, resp):
         body = req.stream.read()
         body = json.loads(body.decode('utf-8'))
@@ -11,4 +12,9 @@ class Analysis(object):
         target = Target(body['target']['image'])
         analysis = model.analysis.Analysis(target, dictionary, params=body['analysis'])
         analysis.start()
+
+    # def on_post(self, req, resp, image_id):
+    #     body = req.stream.read()
+    #     body = json.loads(body.decode('utf-8'))
+    #     print(body)
 

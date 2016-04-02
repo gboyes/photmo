@@ -1,0 +1,4 @@
+numpy
+scipy
+falcon
+gunicorn

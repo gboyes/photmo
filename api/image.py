@@ -1,5 +1,6 @@
 import falcon
 import json
+from bson.json_util import dumps
 from mapper import imagemapper
 
 class Image(object):
@@ -18,13 +19,22 @@ class Image(object):
 
     def on_get(self, req, resp, image_id):
         result = self.mapper.find(image_id)
-        resp.body = result
+        if result != None:
+            resp.status = falcon.HTTP_200
+            resp.body = dumps(result)
+        else:
+            resp.status = falcon.HTTP_404
 
     def on_delete(self, req, resp, image_id):
-        pass
+        result = self.mapper.delete(image_id)
+        if result != None:
+            resp.status = falcon.HTTP_200
+        else:
+            resp.status = falcon.HTTP_400
 
 class Images(object):
     def __init__(self):
         self.mapper = imagemapper.ImageMapper()
+
     def on_get(self, req, resp):
-        resp.body = self.mapper.find_all()
+        resp.body = dumps(self.mapper.find_many())

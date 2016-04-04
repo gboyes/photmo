@@ -7,7 +7,6 @@ from api.image import Image, Images
 db = MongoClient().photmo
 
 api = falcon.API()
-api.add_route('/process', Process())
 api.add_route('/process/{image_id}', Process())
 api.add_route('/image', Image())
 api.add_route('/image/{image_id}', Image())

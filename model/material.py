@@ -49,10 +49,10 @@ class Atom(object):
 
 
 class Dictionary(object):
-    def __init__(self, params=None):
+    def __init__(self, images, params=None):
         self.scalars = params.get('scalars') or [1]
         self.windowed = params.get('windowed') or True
-        self.images = params.get('images') or []
+        self.images = images
         self.max_height = 1.0
         self.max_width = 1.0
         self.atoms = []

@@ -136,6 +136,7 @@ class Analysis(object):
 
             count += 1
 
+        #FIXME: customizable paths
         filename = "%s_MODEL.png" % self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
         local_path = "%s/%s" % (self.outputDirectory, filename)
 

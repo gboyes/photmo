@@ -1,5 +1,5 @@
 import falcon
-import json
+import mimetypes
 from bson.json_util import dumps
 from mapper import imagemapper
 
@@ -8,14 +8,19 @@ class Image(object):
         self.mapper = imagemapper.ImageMapper()
 
     def on_post(self, req, resp):
-        body = req.stream.read()
-        body = json.loads(body.decode('utf-8'))
-        result = self.mapper.insert(body)
+        ext = mimetypes.guess_extension(req.content_type)
+        result = self.mapper.insert({}, ext)
+        image_path = result['location']
+        with open(image_path, 'wb') as image_file:
+            while True:
+                chunk = req.stream.read(4096)
+                if not chunk:
+                    break
+                image_file.write(chunk)
 
-        if result != None:
-            resp.status = falcon.HTTP_201
-        else:
-            resp.status = falcon.HTTP_400
+        resp.status = falcon.HTTP_201
+        resp.body = dumps(result)
+
 
     def on_get(self, req, resp, image_id):
         result = self.mapper.find(image_id)

@@ -3,3 +3,4 @@ scipy
 falcon
 gunicorn
 pymongo
+gevent

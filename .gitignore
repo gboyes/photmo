@@ -1,7 +1,8 @@
 *.py~
 *.pyc
-image-output/
 tmp/
 dev/
 venv/
 .idea/
+images/
+output/

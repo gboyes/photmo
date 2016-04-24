@@ -1,17 +1,18 @@
+import os
 import cv2
 import datetime
 import sys
 import numpy as np
 
 class Analysis(object):
-    def __init__(self, target, dictionary, params=None):
+    def __init__(self, target, dictionary, output_path, params=None):
 
-        self.timestamp = datetime.datetime.now()
+
         self.target = target
         self.dictionary = dictionary
         self.model = np.zeros(np.shape(self.target.image))
         self.residual = self.target.image.copy()
-        self.outputDirectory = './tmp'
+        self.output_path = output_path
         self.kIterations = params.get('iterations') or 100
         self.snap_to_x = params.get('snap_to_x') or 120
         self.snap_to_y = params.get('snap_to_y') or 160
@@ -136,9 +137,5 @@ class Analysis(object):
 
             count += 1
 
-        #FIXME: customizable paths
-        filename = "%s_MODEL.png" % self.timestamp.strftime("%Y-%m-%d_%H_%M_%S")
-        local_path = "%s/%s" % (self.outputDirectory, filename)
-
-        cv2.imwrite(local_path, self.model * 255)
+        cv2.imwrite(self.output_path, self.model * 255)
 
